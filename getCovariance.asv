@@ -1,0 +1,7 @@
+function Cov = getCovariance(Class,cnt_c)
+Cov = zeros(size(cnt_c,1));
+for i=Class
+    E = 
+end
+
+end
