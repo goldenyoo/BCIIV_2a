@@ -109,9 +109,9 @@ P = (U_new'*W)';
 %% 
 
 [M_1 Q_1] = getFeature_vector(Class_1,P,cnt_c);
-[M_2 Q_2] = getFeature_vector(Class_1,P,cnt_c);
-[M_3 Q_3] = getFeature_vector(Class_1,P,cnt_c);
-[M_4 Q_4] = getFeature_vector(Class_1,P,cnt_c);
+[M_2 Q_2] = getFeature_vector(Class_2,P,cnt_c);
+[M_3 Q_3] = getFeature_vector(Class_3,P,cnt_c);
+[M_4 Q_4] = getFeature_vector(Class_4,P,cnt_c);
 
 
 %% 
