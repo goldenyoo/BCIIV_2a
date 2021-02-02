@@ -1,4 +1,4 @@
-function [M Q] = getFeature_vector(Class,P,cnt_c)
+function [M Q] = getFeature_vector(Class,P,cnt_c,m)
 fp_n = [];
 for i = Class    
     % One trial data
@@ -9,7 +9,7 @@ for i = Class
     
     % Feature vector
     tmp_ind = size(Z,1);
-    Z_reduce = [Z(1:3,:); Z(tmp_ind-(3-1):tmp_ind,:)];
+    Z_reduce = [Z(1:m,:); Z(tmp_ind-(m-1):tmp_ind,:)];   
     var_vector = var(Z_reduce,0,2)';
     var_vector = (1/sum(var_vector))*var_vector;
     
@@ -21,7 +21,7 @@ end
 
 M = mean(fp_n,2);
 
-Q = zeros(2*3);
+Q = zeros(2*m);
 for i = 1:length(fp_n)
     tmp = (fp_n(:,i) - M)*(fp_n(:,i) - M)';
     Q = Q + tmp;
