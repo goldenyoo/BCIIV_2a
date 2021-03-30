@@ -22,6 +22,16 @@ load(FILENAME);
 s = 0.1*double(s);
 cnt = s';
 cnt(~isfinite(cnt)) = min(min(cnt)); % Encode Nan as the negative maximum value
+%% EOG Remove
+Y = cnt(1:22,:)';
+U = cnt(23:25,:)';
+C_nn = U'*U;
+C_ny = U'*Y;
+b = pinv(C_nn)*C_ny;
+
+S = Y - U*b;
+
+cnt = S';
 
 %% Preprocessing
 if referencing ~= 0
