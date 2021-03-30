@@ -1,4 +1,5 @@
 function [train_0,train_r,M_0,M_r, Q_0, Q_r] = getFeature_vector(Class_0,Class_r,P,cnt_c,m)
+% figure
 fp_n = [];
 for i = Class_0    
     % One trial data
@@ -17,6 +18,7 @@ for i = Class_0
     fp = fp';
     
      fp_n = [fp_n fp];
+%      scatter3(fp(1),fp(2),fp(4),'b'); hold on;
 end
 
 train_0 = fp_n;
@@ -51,6 +53,7 @@ for i = Class_r
     fp = fp';
     
      fp_n = [fp_n fp];
+%      scatter3(fp(1),fp(2),fp(4),'r'); hold on;
 end
 
 train_r = fp_n;
