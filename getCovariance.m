@@ -4,7 +4,7 @@ function [N, Cov] = getCovariance(Class,cnt_c)
 Cov = zeros(size(cnt_c,1));
 for i=Class
     % One trial data
-    E = cnt_c(:,i:i+313);
+    E = cnt_c(:,i+125:i+625);
     
 %     %BPF Design
 %     bpFilt = designfilt('bandpassfir','FilterOrder',25, ...

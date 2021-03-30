@@ -1,4 +1,4 @@
-function [check, result] = myClassifier2(fp,X1,X2,V,k)
+function [check, result, insert] = myClassifier2(fp,X1,X2,V,k)
     
 insert = V'*fp;
 

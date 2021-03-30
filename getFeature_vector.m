@@ -3,7 +3,7 @@ function [train_0,train_r,M_0,M_r, Q_0, Q_r] = getFeature_vector(Class_0,Class_r
 fp_n = [];
 for i = Class_0    
     % One trial data
-    E = cnt_c(:,i:i+313);
+    E = cnt_c(:,i+125:i+625);
     
     % Project data using calculated spatial filter
     Z = P'*E;

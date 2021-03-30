@@ -62,17 +62,17 @@ for i = 1:size(cnt_y,1)
 %     cnt_c(i,:) = filter(bpFilt, cnt_c(i,:));
 end
 %% 
- 
+  checker = [];
+  checker_tt = [];
 
 
 pip = 1;
 for i = 1: length(h.EVENT.POS)
    if h.EVENT.TYP(i)== 783
        predictions = [];
-       checker = [];
-        checker_tt = [];
-       for j = 0:313
-           E = cnt_c(:,h.EVENT.POS(i)+j-150:h.EVENT.POS(i)+j);
+      
+       for j = 0:50
+           E = cnt_c(:,h.EVENT.POS(i)+20*j-500:h.EVENT.POS(i)+20*j);
            
            for k = 1:4
                Z = P{k}'*E;
@@ -84,24 +84,25 @@ for i = 1: length(h.EVENT.POS)
            end
            clear Z Z_reduce
            
-           [tt1 prediction1] = myClassifier2(fp(:,1),X_train{1,1},X_train{1,2},V_train{1,1},1); %%%  0 vs -1
+           [tt1 prediction1, insert1] = myClassifier2(fp(:,1),X_train{1,1},X_train{1,2},V_train{1,1},1); %%%  0 vs -1
            
-           [tt2 prediction2] = myClassifier2(fp(:,2),X_train{2,1},X_train{2,2},V_train{2,1},2); %%% 0 vs +1
+           [tt2 prediction2, insert2] = myClassifier2(fp(:,2),X_train{2,1},X_train{2,2},V_train{2,1},2); %%% 0 vs +1
            
-           [tt3 prediction3] = myClassifier2(fp(:,3),X_train{3,1},X_train{3,2},V_train{3,1},3); %%% -1 vs +1
+           [tt3 prediction3, insert3] = myClassifier2(fp(:,3),X_train{3,1},X_train{3,2},V_train{3,1},3); %%% -1 vs +1
            
-           [tt4 prediction4] = myClassifier2(fp(:,4),X_train{4,1},X_train{4,2},V_train{4,1},4); %%% -1 vs +1
+           [tt4 prediction4, insert4] = myClassifier2(fp(:,4),X_train{4,1},X_train{4,2},V_train{4,1},4); %%% -1 vs +1
            
-           checker = [checker;[prediction1 prediction2 prediction3 prediction4]];
-           checker_tt = [checker_tt;[tt1 tt2 tt3 tt4]];
-           
+%            checker = [checker;[classlabel(pip) prediction1 prediction2 prediction3 prediction4 tt1 tt2 tt3 tt4 insert1 insert2 insert3 insert4]];
+           checker_tt = [tt1 tt2 tt3 tt4];
+           checker_in = [prediction1 prediction2 prediction3 prediction4];
            % Decision algorithm
            if prediction1 == -10 && prediction2 == -10 && prediction3 == -10 && prediction4 == -10
-               prediction = 1;
+               [M, I] = min(abs(checker_tt));
+               prediction = I;
            else
-               ind = find(checker ~=-10 );
+               ind = find(checker_in ~=-10 );
                [M, I] = max(checker_tt(ind));
-               prediction = checker(ind(I));
+               prediction = checker_in(ind(I));
            end
            
            predictions = [predictions prediction];
