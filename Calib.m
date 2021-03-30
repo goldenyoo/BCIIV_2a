@@ -184,39 +184,39 @@ for k = 1:4
   
 end
 %%%%%%%%%% Kernel density plot %%%%%%%%%%%%%%%%%%
-for k = 1:4
-    
-    data1 = V_train{k,1}'*X_train{k,1};
-    data2 = V_train{k,1}'*X_train{k,2};
-    
-    figure
-    subplot(2,1,1)
-    histogram(data1); hold on;
-    histogram(data2); hold on;
-    legend
-    
-    syms x y;
-    h1 = ((4/(3*length(data1)))^0.2)*std(data1);
-    h2 = ((4/(3*length(data1)))^0.2)*std(data2);
-    phi_1 = (1/sqrt(2*pi))*exp(-y^2/(2*h1^2));
-    phi_2 = (1/sqrt(2*pi))*exp(-y^2/(2*h2^2));
-    
-    p_1 = 0;
-    for i= 1:length(data1)
-        p_1 = p_1 + subs(phi_1,x-data1(i));
-    end
-    p_1 = p_1/length(data1);
-    
-    p_2 = 0;
-    for i= 1:length(data2)
-        p_2 = p_2 + subs(phi_2,x-data2(i));
-    end
-    p_2 = p_2/length(data2);
-    
-    
-    subplot(2,1,2)
-    ezplot(p_1); hold on;
-    ezplot(p_2); hold on;
-    legend
-end
+% for k = 1:4
+%     
+%     data1 = V_train{k,1}'*X_train{k,1};
+%     data2 = V_train{k,1}'*X_train{k,2};
+%     
+%     figure
+%     subplot(2,1,1)
+%     histogram(data1); hold on;
+%     histogram(data2); hold on;
+%     legend
+%     
+%     syms x y;
+%     h1 = ((4/(3*length(data1)))^0.2)*std(data1);
+%     h2 = ((4/(3*length(data1)))^0.2)*std(data2);
+%     phi_1 = (1/sqrt(2*pi))*exp(-y^2/(2*h1^2));
+%     phi_2 = (1/sqrt(2*pi))*exp(-y^2/(2*h2^2));
+%     
+%     p_1 = 0;
+%     for i= 1:length(data1)
+%         p_1 = p_1 + subs(phi_1,x-data1(i));
+%     end
+%     p_1 = p_1/length(data1);
+%     
+%     p_2 = 0;
+%     for i= 1:length(data2)
+%         p_2 = p_2 + subs(phi_2,x-data2(i));
+%     end
+%     p_2 = p_2/length(data2);
+%     
+%     
+%     subplot(2,1,2)
+%     ezplot(p_1); hold on;
+%     ezplot(p_2); hold on;
+%     legend
+% end
  end
