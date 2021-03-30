@@ -197,7 +197,7 @@ end
 %     
 %     syms x y;
 %     h1 = ((4/(3*length(data1)))^0.2)*std(data1);
-%     h2 = ((4/(3*length(data1)))^0.2)*std(data2);
+%     h2 = ((4/(3*length(data2)))^0.2)*std(data2);
 %     phi_1 = (1/sqrt(2*pi))*exp(-y^2/(2*h1^2));
 %     phi_2 = (1/sqrt(2*pi))*exp(-y^2/(2*h2^2));
 %     
