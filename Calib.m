@@ -2,17 +2,16 @@
 %    File_name: Calib.m
 %    Programmer: Seungjae Yoo                             
 %                                           
-%    Last Modified: 2020_02_02                           
+%    Last Modified: 2020_03_30                           
 %                                                            
  % ----------------------------------------------------------------------- %
- function [M_1,M_2,M_3,M_4,Q_1,Q_2,Q_3,Q_4,P] = Calib(answer)
+ function [P,V_train,X_train] = Calib(answer,ref)
  
 data_label = string(answer(1,1));
 m = double(string(answer(2,1)));
-order = double(string(answer(3,1)));
-low_f = double(string(answer(4,1)));
-high_f = double(string(answer(5,1)));
- 
+low_f = double(string(answer(3,1)));
+high_f = double(string(answer(4,1)));
+referencing = double(string(answer(5,1)));
  
 FILENAME = strcat('C:\Users\유승재\Desktop\BCIIV_2a_mat\A0',data_label,'T_2_mat');
 load(FILENAME);
@@ -21,22 +20,44 @@ s = 0.1*double(s);
 cnt = s';
 cnt(~isfinite(cnt)) = min(min(cnt)); % Encode Nan as the negative maximum value
 %% Preprocessing
-for i = 1 : size(cnt,1)
-        cnt(i,:) = cnt(i,:) - cnt(10,:);
+if referencing ~= 0
+    %%% Calculate differential voltage
+    for i = 1 : size(cnt,1)
+        cnt(i,:) = cnt(i,:) - cnt(ref,:);
+    end
+    
+    % common average
+    if referencing == 1
+        cnt_y = cnt; % Exclude electrode (AF3, AF4, O1, O2, PO1, PO2)
+        Means = (1/size(cnt,1))*sum(cnt);
+        for i = 1 : size(cnt_y,1)
+            cnt_y(i,:) = cnt_y(i,:) - Means; % CAR
+        end
+        cnt_y = cnt_y([2:9 11:18],:);
+        % LAP
+    elseif referencing == 2
+        cnt_n = myLAP(cnt,nfo); % Laplacian
+        cnt_y = cnt_n([2:9 11:18],:); % Exclude electrode (AF3, AF4, O1, O2, PO1, PO2)
+    end
+else
+    %%% Calculate differential voltage
+    for i = 1 : size(cnt,1)
+        cnt(i,:) = cnt(i,:) - cnt(ref,:);
+    end
+    
+    cnt_y = cnt([2:9 11:18],:); % Exclude electrode (AF3, AF4, O1, O2, PO1, PO2)
 end
-cnt_c = cnt(2:18,:);
-Means = (1/size(cnt_c,1))*sum(cnt_c);
-for i = 1 : size(cnt_c,1)
-    cnt_c(i,:) = cnt_c(i,:) - Means; % CAR
-end
+
+
+
 %%
 %BPF Design
-bpFilt = designfilt('bandpassfir','FilterOrder',order, ...
-    'CutoffFrequency1',low_f,'CutoffFrequency2',high_f, ...
-    'SampleRate',250);
+ bpFilt = designfilt('bandpassiir','SampleRate',250,'PassbandFrequency1',low_f, ...
+        'PassbandFrequency2',high_f,'StopbandFrequency1',low_f-2,'StopbandFrequency2',high_f+2, ...
+        'StopbandAttenuation1',40,'StopbandAttenuation2',40, 'PassbandRipple',1,'DesignMethod','cheby2');
 % Apply BPF
-for i = 1:size(cnt_c,1)
-    cnt_c(i,:) = filtfilt(bpFilt, cnt_c(i,:));
+for i = 1:size(cnt_y,1)
+    cnt_c(i,:) = filtfilt(bpFilt, cnt_y(i,:));
 %     cnt_c(i,:) = filter(bpFilt, cnt_c(i,:));
 end
 
@@ -67,46 +88,90 @@ while i <=length(h.EVENT.TYP)
     end    
 end
 
-Cov_1 = getCovariance(Class_1,cnt_c);
-Cov_2 = getCovariance(Class_2,cnt_c);
-Cov_3 = getCovariance(Class_3,cnt_c);
-Cov_4 = getCovariance(Class_4,cnt_c);
+[N_1 Cov_1] = getCovariance(Class_1,cnt_c);
+[N_2 Cov_2] = getCovariance(Class_2,cnt_c);
+[N_3 Cov_3] = getCovariance(Class_3,cnt_c);
+[N_4 Cov_4] = getCovariance(Class_4,cnt_c);
 %% 
-Cov_total = Cov_1 + Cov_2 + Cov_3 + Cov_4;
-% Cov_total = Cov_1 + Cov_2;
-
-% EVD for composite covariance
-[V, D] = eig(Cov_total);
-
-% sort eigen vector with descend manner
-[d, ind] = sort(abs(diag(D)),'descend');
-D_new = diag(d);
-V_new = V(:,ind);
-
-% whitening transformation
-whiten_tf = V_new*D_new^(-0.5);
-W = whiten_tf';
-
-% Apply whitening to each averaged covariances
-S_1 = W*Cov_1*W';
-S_2 = W*Cov_2*W';
-S_3 = W*Cov_3*W';
-S_4 = W*Cov_4*W';
-
-% EVD for transformed covariance
-[U, phsi] = eig(S_1,S_2);
-
-% sort
-[d, ind] = sort(abs(diag(phsi)),'descend');
-phsi_new = diag(d);
-U_new = U(:,ind);
-
-% Total Projection matrix,   Z = P'*X
-P = (U_new'*W)';
+for i = 1:4
+    if i == 1
+        C_a = Cov_1;
+        C_b = (N_2*Cov_2 + N_3*Cov_3 + N_4*Cov_4)/(N_2 + N_3 + N_4);
+    elseif i == 2
+        C_a = Cov_2;
+        C_b = (N_1*Cov_1 + N_3*Cov_3 + N_4*Cov_4)/(N_1 + N_3 + N_4);
+    elseif i ==3
+        C_a = Cov_3;
+        C_b = (N_2*Cov_2 + N_1*Cov_1 + N_4*Cov_4)/(N_2 + N_1 + N_4);
+    else
+        C_a = Cov_4;
+        C_b = (N_2*Cov_2 + N_3*Cov_3 + N_1*Cov_1)/(N_2 + N_3 + N_1);
+    end
+    
+    C_c = C_a + C_b;
+    
+    % EVD for composite covariance
+    [V, D] = eig(C_c);
+    
+%     if ~isempty(find(diag(D)<0)), error("Nagative eigen value"); end
+    
+    % sort eigen vector with descend manner
+    [d, ind] = sort(abs(diag(D)),'descend');
+    D_new = diag(d);
+    V_new = V(:,ind);
+    
+    % whitening transformation
+    whiten_tf = V_new*D_new^(-0.5);
+    W = whiten_tf';
+    
+    % Apply whitening to each averaged covariances
+    Sa = W*C_a*W';
+    Sb = W*C_b*W';
+    
+    
+    % EVD for transformed covariance
+    [U, phsi] = eig(Sb,Sa+Sb);
+    if ~isempty(find(diag(phsi)<0)), error("Nagative eigen value"); end
+  
+    [d, ind] = sort(abs(diag(phsi)),'descend');
+    phsi_new = diag(d);
+    U_new = U(:,ind);
+    
+    P{i} = (U_new'*W)';
+end
 %% 
 
-[M_1 Q_1] = getFeature_vector(Class_1,P,cnt_c,m);
-[M_2 Q_2] = getFeature_vector(Class_2,P,cnt_c,m);
-[M_3 Q_3] = getFeature_vector(Class_3,P,cnt_c,m);
-[M_4 Q_4] = getFeature_vector(Class_4,P,cnt_c,m);
+[train_1,train_R1,M_1,M_R1, Q_1, Q_R1] = getFeature_vector(Class_1,[Class_2 Class_3 Class_4],P{1},cnt_c,m);
+[train_2,train_R2,M_2,M_R2, Q_2, Q_R2] = getFeature_vector(Class_2,[Class_1 Class_3 Class_4],P{2},cnt_c,m);
+[train_3,train_R3,M_3,M_R3, Q_3, Q_R3] = getFeature_vector(Class_3,[Class_2 Class_1 Class_4],P{3},cnt_c,m);
+[train_4,train_R4,M_4,M_R4, Q_4, Q_R4] = getFeature_vector(Class_4,[Class_2 Class_3 Class_1],P{4},cnt_c,m);
+
+X_train{1,1} = train_1; X_train{1,2} = train_R1; M_train{1,1} = M_1; M_train{1,2} = M_R1; Q_train{1,1} = Q_1; Q_train{1,2} = Q_R1;
+X_train{2,1} = train_2; X_train{2,2} = train_R2; M_train{2,1} = M_2; M_train{2,2} = M_R2; Q_train{2,1} = Q_2; Q_train{2,2} = Q_R2;
+X_train{3,1} = train_3; X_train{3,2} = train_R3; M_train{3,1} = M_3; M_train{3,2} = M_R3; Q_train{3,1} = Q_3; Q_train{3,2} = Q_R3;
+X_train{4,1} = train_4; X_train{4,2} = train_R4; M_train{4,1} = M_4; M_train{4,2} = M_R4; Q_train{4,1} = Q_4; Q_train{4,2} = Q_R4;
+%%
+for k = 1:4
+    
+    X1 = X_train{k,1};
+    X2 = X_train{k,2};
+    
+    M_1 = M_train{k,1};
+    M_2 = M_train{k,2};
+    C_1 = Q_train{k,1};
+    C_2 = Q_train{k,2};
+    
+    Sb = (M_1-M_2)*(M_1-M_2)';
+    Sw = C_1+C_2;
+    tmp = pinv(Sb)*Sw;
+    
+    [V, D] = eig(tmp);
+    [d, ind] = sort(abs(diag(D)),'descend');
+    D_new = diag(d);
+    V_new = V(:,ind);
+    
+    V_train{k,1} = V_new(:,1); 
+  
+end
+
  end

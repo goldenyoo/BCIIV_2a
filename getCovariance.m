@@ -1,4 +1,4 @@
-function Cov = getCovariance(Class,cnt_c)
+function [N, Cov] = getCovariance(Class,cnt_c)
 
 
 Cov = zeros(size(cnt_c,1));
@@ -22,4 +22,5 @@ for i=Class
     Cov = Cov + C;
 end
 Cov = Cov/length(Class);
+N = length(Class);
 end

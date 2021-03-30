@@ -2,15 +2,15 @@
 %    File_name: Eval.m
 %    Programmer: Seungjae Yoo                             
 %                                           
-%    Last Modified: 2020_02_02                           
+%    Last Modified: 2020_03_30                           
 %                                                            
  % ----------------------------------------------------------------------- %
-function output = Eval(answer,M_1,M_2,M_3,M_4,Q_1,Q_2,Q_3,Q_4,P)
+function [output] = Eval(answer,P,V_train,X_train,ref)
 data_label = string(answer(1,1));
 m = double(string(answer(2,1)));
-order = double(string(answer(3,1)));
-low_f = double(string(answer(4,1)));
-high_f = double(string(answer(5,1)));
+low_f = double(string(answer(3,1)));
+high_f = double(string(answer(4,1)));
+referencing = double(string(answer(5,1)));
 %% Call true label
 FILENAME = strcat('C:\Users\유승재\Desktop\BCIIV_2a_mat\true_labels\A0',data_label,'E');
 load(FILENAME);
@@ -24,75 +24,92 @@ cnt = s';
 cnt(~isfinite(cnt)) = min(min(cnt)); % Encode Nan as the negative maximum value
 
 %% Preprocessing
-for i = 1 : size(cnt,1)
-        cnt(i,:) = cnt(i,:) - cnt(10,:);
-end
-cnt_c = cnt(2:18,:);
-Means = (1/size(cnt_c,1))*sum(cnt_c);
-for i = 1 : size(cnt_c,1)
-    cnt_c(i,:) = cnt_c(i,:) - Means; % CAR
+if referencing ~= 0
+    %%% Calculate differential voltage
+    for i = 1 : size(cnt,1)
+        cnt(i,:) = cnt(i,:) - cnt(ref,:);
+    end
+    
+    % common average
+    if referencing == 1
+        cnt_y = cnt; % Exclude electrode (AF3, AF4, O1, O2, PO1, PO2)
+        Means = (1/size(cnt,1))*sum(cnt);
+        for i = 1 : size(cnt_y,1)
+            cnt_y(i,:) = cnt_y(i,:) - Means; % CAR
+        end
+        cnt_y = cnt_y([2:9 11:18],:);
+        % LAP
+    elseif referencing == 2
+        cnt_n = myLAP(cnt,nfo); % Laplacian
+        cnt_y = cnt_n([2:9 11:18],:); % Exclude electrode (AF3, AF4, O1, O2, PO1, PO2)
+    end
+else
+    %%% Calculate differential voltage
+    for i = 1 : size(cnt,1)
+        cnt(i,:) = cnt(i,:) - cnt(ref,:);
+    end
+    
+    cnt_y = cnt([2:9 11:18],:); % Exclude electrode (AF3, AF4, O1, O2, PO1, PO2)
 end
 %%
 %BPF Design
-bpFilt = designfilt('bandpassfir','FilterOrder',order, ...
-    'CutoffFrequency1',low_f,'CutoffFrequency2',high_f, ...
-    'SampleRate',250);
+bpFilt = designfilt('bandpassiir','SampleRate',250,'PassbandFrequency1',low_f, ...
+        'PassbandFrequency2',high_f,'StopbandFrequency1',low_f-2,'StopbandFrequency2',high_f+2, ...
+        'StopbandAttenuation1',40,'StopbandAttenuation2',40, 'PassbandRipple',1,'DesignMethod','cheby2');
 % Apply BPF
-for i = 1:size(cnt_c,1)
-    cnt_c(i,:) = filtfilt(bpFilt, cnt_c(i,:));
+for i = 1:size(cnt_y,1)
+    cnt_c(i,:) = filtfilt(bpFilt, cnt_y(i,:));
 %     cnt_c(i,:) = filter(bpFilt, cnt_c(i,:));
 end
 %% 
-Class_1 = [];
+ 
 
-i=1;
-while i <=length(h.EVENT.TYP)
-    if h.EVENT.TYP(i)== 1023
-        i = i + 1;
-    elseif h.EVENT.TYP(i)== 783
-        Class_1 = [Class_1 h.EVENT.POS(i)];
-        i = i + 1;
-    else
-        i = i + 1;
-    end    
-end
 
-%% 
-score = [];
-predictions = [];
-checks = [];
-
-for i = 1: length(Class_1)
-    j = Class_1(i);
-    E = cnt_c(:,j:j+313);
-    Z = P'*E;
-    
-    % Feature vector
-    tmp_ind = size(Z,1);
-    Z_reduce = [Z(1:m,:); Z(tmp_ind-(m-1):tmp_ind,:)];
-    
-    var_vector = var(Z_reduce,0,2)';
-    var_vector = (1/sum(var_vector))*var_vector;
-    
-    fp = log(var_vector);
-    fp = fp';
-    
-    % Run classifier
-    [check, prediction] = myClassifier(fp,M_1,M_2,M_3,M_4,Q_1,Q_2,Q_3,Q_4);
-    if prediction == classlabel(i)
-        score = [score 1];        
-    else
-        score = [score 0];
-        
-    end
-    predictions = [predictions prediction];
-    checks = [checks check];    
-%     
-    % Graphical represent
-%     figure(f1)
-%     scatter3(Z(1,:), Z(size(Z,1),:),Z(2,:),'b'); hold on;
+pip = 1;
+for i = 1: length(h.EVENT.POS)
+   if h.EVENT.TYP(i)== 783
+       predictions = [];
+       checker = [];
+        checker_tt = [];
+       for j = 0:313
+           E = cnt_c(:,h.EVENT.POS(i)+j-150:h.EVENT.POS(i)+j);
+           
+           for k = 1:4
+               Z = P{k}'*E;
+               % Feature vector
+               tmp_ind = size(Z,1);
+               Z_reduce = [Z(1:m,:); Z(tmp_ind-(m-1):tmp_ind,:)];
+               var_vector = diag(Z_reduce*Z_reduce')/trace(Z_reduce*Z_reduce');
+               fp(:,k) = log(var_vector);
+           end
+           clear Z Z_reduce
+           
+           [tt1 prediction1] = myClassifier2(fp(:,1),X_train{1,1},X_train{1,2},V_train{1,1},1); %%%  0 vs -1
+           
+           [tt2 prediction2] = myClassifier2(fp(:,2),X_train{2,1},X_train{2,2},V_train{2,1},2); %%% 0 vs +1
+           
+           [tt3 prediction3] = myClassifier2(fp(:,3),X_train{3,1},X_train{3,2},V_train{3,1},3); %%% -1 vs +1
+           
+           [tt4 prediction4] = myClassifier2(fp(:,4),X_train{4,1},X_train{4,2},V_train{4,1},4); %%% -1 vs +1
+           
+           checker = [checker;[prediction1 prediction2 prediction3 prediction4]];
+           checker_tt = [checker_tt;[tt1 tt2 tt3 tt4]];
+           
+           % Decision algorithm
+           if prediction1 == -10 && prediction2 == -10 && prediction3 == -10 && prediction4 == -10
+               prediction = 1;
+           else
+               ind = find(checker ~=-10 );
+               [M, I] = max(checker_tt(ind));
+               prediction = checker(ind(I));
+           end
+           
+           predictions = [predictions prediction];
+       end
+       output{pip} = predictions;
+       pip = pip + 1;
+   end
 end
   
-% Caculation score
-output = 100*sum(score)/length(score);
+
 end
