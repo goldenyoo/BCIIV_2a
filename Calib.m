@@ -219,4 +219,25 @@ end
 %     ezplot(p_2); hold on;
 %     legend
 % end
+%%%%%%%%%% feature vector scatter plot %%%%%%%%%%%%%%%%%%
+% for k = 1:4
+%     
+%     data1 = X_train{k,1};
+%     data2 = X_train{k,2};
+%     
+%     figure  
+%     
+%     for i= 1:length(data1)
+%         fp = data1(:,i);
+%         scatter3(fp(1),fp(2),fp(4),'r'); hold on;
+%     end
+%     for i= 1:length(data2)
+%         fp = data2(:,i);
+%         scatter3(fp(1),fp(2),fp(4),'b'); hold on;
+%     end
+%     
+%    
+% end
+
+
  end
